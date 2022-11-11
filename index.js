@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const jwt=require('JsonWebToken')
+const jwt=require('jsonwebtoken')
 const port = process.env.PORT || 5000
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -127,4 +127,4 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => {
   console.log(`your photographer is runnig on port ${port}`)
-})
+});
