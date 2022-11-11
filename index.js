@@ -1,7 +1,8 @@
 const express = require('express');
 const app = express();
+const jwt=require('JsonWebToken')
 const port = process.env.PORT || 5000
-const cors = require('cors')
+const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 
@@ -13,31 +14,60 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@clu
 
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-
+function verifyJWT(req,res,next){
+  const authHeade=req.headers.authorization;
+  if(!authHeade){
+    res.status(401).send({message:'unauthorization'})
+  }
+  const token=authHeade.split(' ')[1];
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,function(error,decoded){
+    if(error){
+      res.status(401).send({message:'unauthorization'})
+    }
+    req.decoded=decoded;
+    next();
+  })
+}
 async function run() {
   const servicesCollection = client.db('yourPhotodb').collection('services');
   const commentCollection = client.db('yourPhotodb').collection('comments')
   try {
+
+    app.post('/jwt',(req,res)=>{
+      const user=req.body
+      const token=jwt.sign(user,process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h'  });
+      console.log(token);
+      res.send({token});
+       
+      
+    })
     app.get('/service', async (req, res) => {
       const query = {}
       const cursor = servicesCollection.find(query)
       const service = await cursor.limit(3).toArray();
-      console.log(service);
+   
       res.send(service)
     })
     app.get('/services', async (req, res) => {
       const query = {}
       const cursor = servicesCollection.find(query)
       const service = await cursor.toArray();
-      console.log(service);
+    
       res.send(service)
     })
     app.get('/services/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) }
       const result = await servicesCollection.findOne(query)
-      console.log(result);
+     
       res.send(result)
+    })
+
+    app.post('/services',async(req,res)=>{
+      const services=req.body
+      const result=await servicesCollection.insertOne(services);
+      console.log(result)
+      res.send(result);      
     })
     app.get('/comments', async (req, res) => {
       const id = req.query.id
@@ -47,19 +77,33 @@ async function run() {
       res.send(result);
     })
 
-    app.get('/comment', async (req, res) => {    
-      const email=req.query.email
+    app.get('/comment',async (req, res) => {    
+      const email=req.query.email      
       const query={email:email};
       const cursor = commentCollection.find(query)
       const result = await cursor.toArray();
-      console.log(result);     
+          
       res.send(result);
     })
     app.post('/comments', async (req, res) => {
       const comment = req.body;
       const result = await commentCollection.insertOne(comment);
-      console.log(result);
+    
       res.send(result);
+    })
+    app.patch('/comments/:id',async(req,res)=>{
+      const id =req.params.id;
+      const query={_id:ObjectId(id)}
+      const comments=req.body.comm
+      const updateDoc={
+        $set:{
+          comment:comments
+       }  
+      }
+      const result=await commentCollection.updateOne(query,updateDoc)
+      console.log(result);
+      res.send(result)
+      
     })
     app.delete('/comment/:id',async(req,res)=>{
       const id=req.params.id;
