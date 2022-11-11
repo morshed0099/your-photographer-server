@@ -15,14 +15,14 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@clu
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 function verifyJWT(req,res,next){
-  const authHeade=req.headers.authorization;
+  const authHeade = req.headers.authorization;
   if(!authHeade){
-    res.status(401).send({message:'unauthorization'})
+    return res.status(401).send({message:'unauthorization'})
   }
   const token=authHeade.split(' ')[1];
   jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,function(error,decoded){
     if(error){
-      res.status(401).send({message:'unauthorization'})
+     return res.status(403).send({message:'unauthorization'})
     }
     req.decoded=decoded;
     next();
@@ -43,7 +43,7 @@ async function run() {
     })
     app.get('/service', async (req, res) => {
       const query = {}
-      const cursor = servicesCollection.find(query)
+      const cursor = servicesCollection.find(query).sort({myDate: -1})
       const service = await cursor.limit(3).toArray();
    
       res.send(service)
@@ -72,23 +72,25 @@ async function run() {
     app.get('/comments', async (req, res) => {
       const id = req.query.id
       const query = { service_id: id }
-      const cursor = commentCollection.find(query)
+      const cursor = commentCollection.find(query).sort({time: -1})       
       const result = await cursor.toArray();
       res.send(result);
     })
 
-    app.get('/comment',async (req, res) => {    
+    app.get('/comment',verifyJWT,async (req, res) => { 
+      const decoded=req.decoded   
       const email=req.query.email      
+        if(decoded.email!== email){
+          return res.status(404).send({message:'unauthorized'})
+        }
       const query={email:email};
       const cursor = commentCollection.find(query)
-      const result = await cursor.toArray();
-          
+      const result = await cursor.toArray();          
       res.send(result);
     })
     app.post('/comments', async (req, res) => {
       const comment = req.body;
-      const result = await commentCollection.insertOne(comment);
-    
+      const result = await commentCollection.insertOne(comment);    
       res.send(result);
     })
     app.patch('/comments/:id',async(req,res)=>{
