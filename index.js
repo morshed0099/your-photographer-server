@@ -93,7 +93,7 @@ async function run() {
       const result = await commentCollection.insertOne(comment);    
       res.send(result);
     })
-    app.patch('/comments/:id',verifyJWT,async(req,res)=>{
+    app.patch('/comments/:id',async(req,res)=>{
       const id =req.params.id;
       const query={_id:ObjectId(id)}
       const comments=req.body.comm
